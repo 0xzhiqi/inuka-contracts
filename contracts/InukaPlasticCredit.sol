@@ -5,7 +5,9 @@ pragma solidity 0.8.7;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// TODO: Consider removing Ownable
+interface IInukaPartnerToken {
+    // function getOnChainVerifyStatus (uint256 _projectId) external view returns (AuditStatus _statusDerived)
+}
 
 contract InukaPlasticCredit is ERC1155, Ownable {
 
@@ -17,12 +19,16 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         bytes32 plasticForm;
     }
 
-    mapping (uint256 => Project) public projectIdentifier; // TODO: Change to private?
-    mapping (uint256 => bool) public projectFinalised;
+    enum AuditStatus { None, Partial, Complete}
+
+    mapping (uint256 => Project) private projectIdentifier; // TODO: Change to private?
+    mapping (uint256 => bool) private projectFinalised;
+    mapping (uint256 => AuditStatus) private auditStatus;
 
     string public name;
     string public symbol;
     uint256 private _projectTokenId;
+
 
     // TODO: Add events here
 
@@ -84,7 +90,12 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         projectFinalised[_projectId] = true;
     }
 
-    function getProject(uint256 _projectId) public view returns (Project memory _project) {
-        _project = projectIdentifier[_projectId];
+    function getProject(uint256 _projectId) public view returns (Project memory projectFound) {
+        projectFound = projectIdentifier[_projectId];
     }
+
+    function getProjectFinality(uint256 _projectId) public view returns (bool projectFinalisedFound) {
+        projectFinalisedFound = projectFinalised[_projectId];
+    }
+
 }

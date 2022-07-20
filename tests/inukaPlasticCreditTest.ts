@@ -57,14 +57,14 @@ describe("InukaPlasticCredit", function () {
   describe("Create project", async () => {
     it("Should set creator as project owner", async () => {
       const projectOwnerExpected = await (
-        await InukaPlasticCreditContract.projectIdentifier(1)
+        await InukaPlasticCreditContract.getProject(1)
       ).projectOwner;
       expect(projectOwnerExpected).to.eq(projectCreator.address);
     });
 
     it("Should set project name correctly", async () => {
       const projectNameBytes32Expected = await (
-        await InukaPlasticCreditContract.projectIdentifier(1)
+        await InukaPlasticCreditContract.getProject(1)
       ).projectName;
       const projectNameStringExpected = ethers.utils.parseBytes32String(
         projectNameBytes32Expected
@@ -185,6 +185,16 @@ describe("InukaPlasticCredit", function () {
           numberOfTokensBN
         )
       ).to.be.revertedWith("Not project creator");
+    });
+    describe("Set project status", async () => {
+      // it("Should show default audit status as None i.e. 0", async () => {
+      //   const auditStatusExpected =
+      //     await InukaPlasticCreditContract.getAuditStatus(1);
+      //   expect(auditStatusExpected).to.eq(0);
+      //   console.log(`Audit status: ${auditStatusExpected}`);
+      // });
+
+      it("Should update the audit status from project creator", async () => {});
     });
   });
 });
