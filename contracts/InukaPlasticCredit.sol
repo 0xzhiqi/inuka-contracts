@@ -17,7 +17,7 @@ contract InukaPlasticCredit is ERC1155, Ownable {
     }
 
     struct Project {
-        address owner;
+        address projectOwner;
         bytes32 projectName;
         bytes32 location;
         bytes32 polymerType;
