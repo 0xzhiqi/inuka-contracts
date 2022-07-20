@@ -22,20 +22,31 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         bytes32 location;
         bytes32 polymerType;
         bytes32 plasticForm;
-        Audit[] auditTrail;
     }
 
-    mapping (uint256 => address) public projectOwner;
+    mapping (uint256 => Audit[]) private _auditTrail;
+    mapping (uint256 => Project) public projectIdentifier;
+    mapping (uint256 => bool) public projectFinalised;
 
     string public name;
     string public symbol;
-    uint256 private _tokenId;
+    uint256 private _projectTokenId;
 
     // TODO: Add events here
 
+    // Add event for project created
+
 
     // TODO: Add modifiers here
+    modifier onlyProjectCreator(uint256 _projectId) {
+        require(projectIdentifier[_projectId].projectOwner == msg.sender, "Not project creator");
+        _;
+    }
 
+    modifier projectIsFinalised(uint256 _projectId) {
+        require(projectFinalised[_projectId] == false, "Project finalised");
+        _;
+    }
 
     constructor() ERC1155("") {
         name = "Inuka Plastic Credit";
@@ -55,13 +66,30 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         bytes32 _polymerType,
         bytes32 _plasticForm
     ) external {
-        
+        _projectTokenId ++;
+        projectIdentifier[_projectTokenId] = 
+        Project({
+            projectOwner: msg.sender, 
+            projectName: _projectName,
+            location: _location,
+            polymerType: _polymerType,
+            plasticForm: _plasticForm
+        });
+
+        // TODO: Link to INC campaign contract
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data)
-        public
-        onlyOwner
-    {
-        _mint(account, id, amount, data);
+    // TODO: add bool or modifier to stop credit generation after audit/sale is confirmed?
+    function createPlasticCredit(
+        uint256 _projectId, 
+        uint256 _amount
+    ) external 
+    onlyProjectCreator (_projectId)
+    projectIsFinalised (_projectId) {
+        _mint(msg.sender, _projectId, _amount, "");
+    }
+
+    function finaliseProject (uint256 _projectId) external onlyProjectCreator (_projectId) {
+        projectFinalised[_projectId] = true;
     }
 }
