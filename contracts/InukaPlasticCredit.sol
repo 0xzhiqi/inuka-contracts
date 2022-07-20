@@ -1,20 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.7;
 
-// Import this file to use console.log
-import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract InukaPlasticCredit is ERC1155, Ownable {
+// TODO: Consider removing Ownable
 
-    struct Audit {
-        bytes32 claim;
-        bytes32 evidence;
-        address auditor;
-        bool onChainVerified; // can only be updated by nominated auditor
-    }
+contract InukaPlasticCredit is ERC1155, Ownable {
 
     struct Project {
         address projectOwner;
@@ -24,8 +17,7 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         bytes32 plasticForm;
     }
 
-    mapping (uint256 => Audit[]) private _auditTrail;
-    mapping (uint256 => Project) public projectIdentifier;
+    mapping (uint256 => Project) public projectIdentifier; // TODO: Change to private?
     mapping (uint256 => bool) public projectFinalised;
 
     string public name;
@@ -79,7 +71,6 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         // TODO: Link to INC campaign contract
     }
 
-    // TODO: add bool or modifier to stop credit generation after audit/sale is confirmed?
     function createPlasticCredit(
         uint256 _projectId, 
         uint256 _amount
@@ -91,5 +82,9 @@ contract InukaPlasticCredit is ERC1155, Ownable {
 
     function finaliseProject (uint256 _projectId) external onlyProjectCreator (_projectId) {
         projectFinalised[_projectId] = true;
+    }
+
+    function getProject(uint256 _projectId) public view returns (Project memory _project) {
+        _project = projectIdentifier[_projectId];
     }
 }

@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { InukaPlasticCredit } from "../typechain-types";
-import { BigNumber } from "ethers";
+import { InukaPlasticCredit, InukaPartnerToken } from "../typechain-types";
 
 describe("InukaPlasticCredit", function () {
   let accounts: SignerWithAddress[];
@@ -12,6 +11,7 @@ describe("InukaPlasticCredit", function () {
   let projectLocation: string;
   let polymerType: string;
   let plasticForm: string;
+  let InukaPartnerTokenContract: InukaPartnerToken;
 
   beforeEach(async () => {
     accounts = await ethers.getSigners();
@@ -132,6 +132,59 @@ describe("InukaPlasticCredit", function () {
           plasticCreditsToCreateBN
         )
       ).to.be.revertedWith("Project finalised");
+    });
+  });
+
+  describe("Mint IPT", async () => {
+    beforeEach(async () => {
+      accounts = await ethers.getSigners();
+      const InukaPartnerTokenContractFactory = await ethers.getContractFactory(
+        "InukaPartnerToken"
+      );
+
+      InukaPartnerTokenContract =
+        (await InukaPartnerTokenContractFactory.deploy(
+          InukaPlasticCreditContract.address
+        )) as InukaPartnerToken;
+      await InukaPartnerTokenContract.deployed();
+      console.log(
+        `Inuka Plastic Credit Contract address: ${InukaPlasticCreditContract.address}`
+      );
+    });
+
+    it("Should mint the right number of tokens", async () => {
+      // NOTE: Set variables here
+      const numberOfTokensString: string = "50.0";
+      const projectId: number = 1;
+      const numberOfTokensBN = ethers.utils.parseEther(numberOfTokensString);
+      const createTokenTx = await InukaPartnerTokenContract.connect(
+        projectCreator
+      ).createToken(numberOfTokensBN, projectId);
+      await createTokenTx.wait();
+      const numberOfTokensExpectedBN =
+        await InukaPartnerTokenContract.balanceOf(
+          projectCreator.address,
+          projectId
+        );
+      const numberOfTokensExpectedString = ethers.utils.formatEther(
+        numberOfTokensExpectedBN
+      );
+      expect(numberOfTokensExpectedString).to.eq(numberOfTokensString);
+    });
+
+    it("Should not allow non-project creator to mint", async () => {
+      // NOTE: Set variables here
+      const numberOfTokensString: string = "50.0";
+      const projectId: number = 1;
+      const numberOfTokensBN = ethers.utils.parseEther(numberOfTokensString);
+      const thief: SignerWithAddress = accounts[2];
+
+      await expect(
+        InukaPartnerTokenContract.connect(thief).createToken(
+          projectId,
+          numberOfTokensBN
+        )
+      ).to.be.revertedWith("Not project creator");
     });
   });
 });
