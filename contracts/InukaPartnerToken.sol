@@ -37,6 +37,8 @@ contract InukaPartnerToken is ERC1155, Ownable {
     enum AuditStatus { None, Partial, Complete}
     mapping (uint256 => Audit[]) private _auditTrail;
 
+    bool batchTransferActive;
+
     string public name;
     string public symbol;
     uint256 private _projectTokenId;
@@ -51,6 +53,11 @@ contract InukaPartnerToken is ERC1155, Ownable {
     modifier onlyProjectCreator(uint256 _projectId) {
         address projectOwner = inukaPlasticCredit.getProject(_projectId).projectOwner;
         require(projectOwner == msg.sender, "Not project creator");
+        _;
+    }
+
+    modifier canBatchTransfer () {
+        require(batchTransferActive, "Inactive");
         _;
     }
 
@@ -125,8 +132,36 @@ contract InukaPartnerToken is ERC1155, Ownable {
     // 2 cases when tokens cannot be transferred:
     // 1: when poll is active
     // 2: when redemption has been made
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) public override {
+        require(
+            from == _msgSender() || isApprovedForAll(from, _msgSender()),
+            "ERC1155: caller is not token owner nor approved"
+        );
+        _safeTransferFrom(from, to, id, amount, data);
+    }
 
-    // TODO; Disable safeBatchTransferFrom 
+    /**
+    /* @dev Batch transfer deactivated as it is not used in both Inuka marketplaces
+    */
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) public override canBatchTransfer {
+        require(
+            from == _msgSender() || isApprovedForAll(from, _msgSender()),
+            "ERC1155: caller is not token owner nor approved"
+        );
+        _safeBatchTransferFrom(from, to, ids, amounts, data);
+    }
 
     // TODO: Consider if anything needs to be done to: and approve functions and/or before transfer function
 }
