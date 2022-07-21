@@ -20,6 +20,10 @@ interface IInukaPlasticCredit {
     function getProject(uint256 _projectId) external view returns (Project memory _project);
 }
 
+interface IInukaPlasticCreditMarketplace {
+    function getPercentRedeemed (address _holder) external view returns (uint256 percentRedeemedFound);
+}
+
 // TODO: Consider removing Ownable
 
 contract InukaPartnerToken is ERC1155, Ownable {
@@ -38,6 +42,7 @@ contract InukaPartnerToken is ERC1155, Ownable {
     uint256 private _projectTokenId;
 
     IInukaPlasticCredit private inukaPlasticCredit;
+    IInukaPlasticCreditMarketplace private inukaPlasticCreditMarketplace;
 
     // TODO: Add events here
 
@@ -53,6 +58,10 @@ contract InukaPartnerToken is ERC1155, Ownable {
         name = "Inuka Partner Token";
         symbol = "IPT";
         inukaPlasticCredit = IInukaPlasticCredit(_inukaPlasticCreditAddress);
+    }
+
+    function setInukaPlasticCreditMarketplace (address _InukaPlasticCreditMarketplace) external onlyOwner {
+        inukaPlasticCreditMarketplace = IInukaPlasticCreditMarketplace(_InukaPlasticCreditMarketplace);
     }
 
     function createToken (uint256 _amount, uint256 _projectId) external onlyProjectCreator(_projectId) {
@@ -111,4 +120,6 @@ contract InukaPartnerToken is ERC1155, Ownable {
     function getAuditTrailLength (uint256 _projectId) external view returns (uint256 length) {
         length = _auditTrail[_projectId].length;
     }
+
+    // TODO: Add Override safeTransferFrom, safeBatchTransferFrom and approve functions and/or before transfer function
 }
