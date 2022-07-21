@@ -121,5 +121,12 @@ contract InukaPartnerToken is ERC1155, Ownable {
         length = _auditTrail[_projectId].length;
     }
 
-    // TODO: Add Override safeTransferFrom, safeBatchTransferFrom and approve functions and/or before transfer function
+    // TODO: Add Override safeTransferFrom
+    // 2 cases when tokens cannot be transferred:
+    // 1: when poll is active
+    // 2: when redemption has been made
+
+    // TODO; Disable safeBatchTransferFrom 
+
+    // TODO: Consider if anything needs to be done to: and approve functions and/or before transfer function
 }
