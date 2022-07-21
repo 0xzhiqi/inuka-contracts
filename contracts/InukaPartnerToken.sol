@@ -4,6 +4,8 @@ pragma solidity 0.8.7;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
+
 interface IInukaPlasticCredit {
     // modifier onlyProjectCreator (uint256 _projectId);
     struct Project {
@@ -72,8 +74,6 @@ contract InukaPartnerToken is ERC1155, Ownable {
         }));
     }
 
-    // TODO: Add on-chain verify function by auditor
-
     function onChainVerify (uint256 _projectId, uint256 _index) public {
         // TODO: Check if default address is address(0) and if first require is even necessary
         require(inukaPlasticCredit.getProject(_projectId).projectOwner != address(0), "No Project");
@@ -94,11 +94,21 @@ contract InukaPartnerToken is ERC1155, Ownable {
             index++;
         }
         if (verify == 0) {
-            _statusDerived = AuditStatus.None;
+            _statusDerived = AuditStatus.None; // 0
         } else if (verify == auditTrailLength) {
-            _statusDerived = AuditStatus.Complete;
+            _statusDerived = AuditStatus.Complete; //2
         } else {
-            _statusDerived = AuditStatus.Partial;
+            _statusDerived = AuditStatus.Partial; // 1
         }
     } 
+
+    function getAuditStatus (uint256 _projectId, uint256 _index) external view returns (Audit memory _auditFound) {
+        // TODO: Revert if index is missing
+        _auditFound = _auditTrail[_projectId][_index];
+    }
+
+    // Temp function
+    function getAuditTrailLength (uint256 _projectId) external view returns (uint256 length) {
+        length = _auditTrail[_projectId].length;
+    }
 }

@@ -186,15 +186,102 @@ describe("InukaPlasticCredit", function () {
         )
       ).to.be.revertedWith("Not project creator");
     });
-    describe("Set project status", async () => {
-      // it("Should show default audit status as None i.e. 0", async () => {
-      //   const auditStatusExpected =
-      //     await InukaPlasticCreditContract.getAuditStatus(1);
-      //   expect(auditStatusExpected).to.eq(0);
-      //   console.log(`Audit status: ${auditStatusExpected}`);
-      // });
+    describe("Update audit trail", async () => {
+      let claimMadeString: string;
+      let projectId: number;
+      let auditorAddress: string;
+      let evidenceGivenString: string;
+      beforeEach(async () => {
+        // NOTE: Set variables here
+        projectId = 1;
+        claimMadeString = "Plastics along Sentosa beach";
+        evidenceGivenString = "www.trustmyclaim.com";
+        auditorAddress = accounts[3].address;
+        const updateAuditTrailTx = await InukaPartnerTokenContract.connect(
+          projectCreator
+        ).updateAuditTrail(
+          projectId,
+          ethers.utils.formatBytes32String(claimMadeString),
+          ethers.utils.formatBytes32String(evidenceGivenString),
+          auditorAddress
+        );
+        await updateAuditTrailTx.wait();
+      });
+      it("Should update the first claim", async () => {
+        const index: number = 0;
+        const claimExpectedBytes32 = await (
+          await InukaPartnerTokenContract.getAuditStatus(projectId, index)
+        ).claim;
+        const claimExpectedString =
+          ethers.utils.parseBytes32String(claimExpectedBytes32);
+        expect(claimExpectedString).to.eq(claimMadeString);
+      });
+      it("Should update the second claim", async () => {
+        // NOTE: Set variables here
+        projectId = 1;
+        auditorAddress = accounts[3].address;
+        const index: number = 1;
 
-      it("Should update the audit status from project creator", async () => {});
+        const claim2MadeString: string = "Plastics along East Coast beach";
+        const evidence2GivenString: string = "www.trusthisclaim.com";
+        const updateAuditTrailTx2 = await InukaPartnerTokenContract.connect(
+          projectCreator
+        ).updateAuditTrail(
+          projectId,
+          ethers.utils.formatBytes32String(claim2MadeString),
+          ethers.utils.formatBytes32String(evidence2GivenString),
+          auditorAddress
+        );
+        await updateAuditTrailTx2.wait();
+        const claim2ExpectedBytes32 = await (
+          await InukaPartnerTokenContract.getAuditStatus(projectId, index)
+        ).claim;
+        const claim2ExpectedString = ethers.utils.parseBytes32String(
+          claim2ExpectedBytes32
+        );
+        expect(claim2ExpectedString).to.eq(claim2MadeString);
+      });
+      describe("Set project audit status", async () => {
+        it("Should show default audit status as None i.e. 0", async () => {
+          const auditStatusExpected =
+            await InukaPartnerTokenContract.getOnChainVerifyStatus(1);
+          expect(auditStatusExpected).to.eq(0);
+          console.log(`Audit status: ${auditStatusExpected}`);
+        });
+        it("Should allow auditor selected to verify", async () => {
+          const auditor: SignerWithAddress = accounts[3];
+          projectId = 1;
+          const index: number = 0;
+          const verifyTx = await InukaPartnerTokenContract.connect(
+            auditor
+          ).onChainVerify(projectId, index);
+          await verifyTx.wait();
+
+          const verificationExpected = await (
+            await InukaPartnerTokenContract.getAuditStatus(projectId, index)
+          ).onChainVerified;
+          expect(verificationExpected).to.eq(true);
+          const length = await InukaPartnerTokenContract.getAuditTrailLength(1);
+          console.log(`Length: ${length}`);
+          const onChainVerificationStatusExpected =
+            await InukaPartnerTokenContract.getOnChainVerifyStatus(1);
+          expect(onChainVerificationStatusExpected).to.eq(2);
+        });
+        it("Should not allow non-selected auditor to verify", async () => {
+          const fraudster: SignerWithAddress = accounts[10];
+          projectId = 1;
+          const index: number = 0;
+          await expect(
+            InukaPartnerTokenContract.connect(fraudster).onChainVerify(
+              projectId,
+              index
+            )
+          ).to.be.revertedWith("Not auditor");
+          const onChainVerificationStatusExpected =
+            await InukaPartnerTokenContract.getOnChainVerifyStatus(1);
+          expect(onChainVerificationStatusExpected).to.eq(0);
+        });
+      });
     });
   });
 });
