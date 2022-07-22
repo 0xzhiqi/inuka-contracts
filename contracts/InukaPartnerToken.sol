@@ -182,4 +182,10 @@ contract InukaPartnerToken is ERC1155, Ownable {
         require(msg.sender == IPTMarketplaceAddress, "Unauthorised");
         _mintDeactivated[_projectId] = true;
     }
+
+    // TODO: test that require statement works
+    function undoDeactivateMint (uint256 _projectId) external {
+        require(msg.sender == IPTMarketplaceAddress, "Unauthorised");
+        _mintDeactivated[_projectId] = false;
+    }
 }
