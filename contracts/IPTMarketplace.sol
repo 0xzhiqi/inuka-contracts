@@ -30,6 +30,13 @@ interface IInukaPartnerToken {
     function getMintedAmount (uint256 _projectId) external view returns (uint256 mintedAmountFound);
     function deactivateMint (uint256 _projectId) external;
     function undoDeactivateMint (uint256 _projectId) external;
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) external;
 }
 
 error IPTMarketplace__BuyTokenArrayLengthMismatch(
@@ -43,10 +50,6 @@ error IPTMarketplace__BuyTokenArrayLengthMismatch(
 error IPTMarketplace__InsufficientBalance(
     uint256 balance,
     uint256 required
-);
-
-error IPTMarketplace__ (
-
 );
 
 contract IPTMarketplace is Ownable {
@@ -102,7 +105,6 @@ contract IPTMarketplace is Ownable {
         uint256 _price, 
         uint256 _amount
         ) external 
-        onlyProjectCreator(_projectId) 
     {
         require(inukaPlasticCredit.balanceOf(msg.sender, _projectId) >= _amount, "Insufficient balance");
         require(_price > 0, "No price");
@@ -140,12 +142,22 @@ contract IPTMarketplace is Ownable {
                 });
             }
             // TODO: Check if saving mockUsdc.balanceOf(msg.sender) as a variable saves gas
-            uint256 totalPrice; // TODO: fill this in
+            uint256 arrayCount;
+            uint256 totalPrice;
+            while (arrayCount < _arrayLength){
+                totalPrice += _price[arrayCount] * _amount[arrayCount];
+                arrayCount ++;
+            }
             if (mockUsdc.balanceOf(msg.sender) < totalPrice) {
                 revert IPTMarketplace__InsufficientBalance({
                     balance: mockUsdc.balanceOf(msg.sender),
                     required: totalPrice
                 });
+            }
+            arrayCount = 0;
+            while (arrayCount < _arrayLength) {
+                inukaPartnerToken.safeTransferFrom(secondaryListingFeed[_projectId[arrayCount]][_index[arrayCount]].lister, msg.sender, _projectId[arrayCount], _amount[arrayCount], "");
+                arrayCount++;
             }
             mockUsdc.transferFrom(msg.sender, address(this), totalPrice);
     }

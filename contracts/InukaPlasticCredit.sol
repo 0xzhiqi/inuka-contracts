@@ -120,7 +120,7 @@ contract InukaPlasticCredit is ERC1155, Ownable {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) public virtual override {
+    ) public override {
         require(false, "No batch transfer");
         require(
             from == _msgSender() || isApprovedForAll(from, _msgSender()),

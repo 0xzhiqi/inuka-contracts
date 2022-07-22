@@ -30,6 +30,13 @@ interface IInukaPartnerToken {
     function undoDeactivateMint (uint256 _projectId) external;
     function balanceOf(address account, uint256 id) external view returns (uint256);
     function setApprovalForAll(address operator, bool approved) external;
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) external;
 }
 
 interface IIPTPoll {
@@ -197,6 +204,7 @@ contract IPTLaunchpad is Ownable {
     }
 
     // TODO: Check if changing require statement to custom error saves gas
+    // TODO: Verify that safetransfer function works
     function buyPrimaryToken (uint256 _projectId, uint256 _amount) external {
         require (primaryListingFeed[_projectId].active, "Sale Inactive");
         uint256 totalPrice = primaryListingFeed[_projectId].price * _amount;
@@ -209,6 +217,7 @@ contract IPTLaunchpad is Ownable {
         primarySaleToken[_projectId] += _amount;
         primarySaleRevenue[_projectId] += totalPrice;
         mockUsdc.transferFrom(msg.sender, address(this), totalPrice);
+        inukaPartnerToken.safeTransferFrom(inukaPlasticCredit.getProject(_projectId).projectOwner, msg.sender, _projectId, _amount, "");
     }
 
     /**
