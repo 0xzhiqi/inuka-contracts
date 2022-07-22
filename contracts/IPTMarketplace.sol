@@ -44,6 +44,10 @@ error IPTMarketplace__InsufficientBalance(
     uint256 required
 );
 
+error IPTMarketplace__ (
+
+);
+
 contract IPTMarketplace is Ownable {
     IMockUsdc public mockUsdc;
     IInukaPlasticCredit private inukaPlasticCredit;
@@ -128,7 +132,6 @@ contract IPTMarketplace is Ownable {
     /* @dev To add option for bonding curve next to test if it incentivises early purchase.
     /* To consider allowing more than 5 phases
     */
-    // TODO: Check the dates are valid i.e. one after another
     function listPrimaryToken (
         uint256 _projectId, 
         uint256 _price, 
@@ -142,6 +145,8 @@ contract IPTMarketplace is Ownable {
         onlyProjectCreator(_projectId) 
     {
         require(inukaPlasticCredit.balanceOf(msg.sender, _projectId) >= _amount, "Insufficient balance");
+        // Ensure all minted tokens are listed
+        require(inukaPartnerToken.getMintedAmount(_projectId) == _amount, "Not all tokens listed");
         require(_price > 0, "No price");
         require(_phasesNumber < 6, "More than 5 phases");
         uint256 phasesFundTotal;
@@ -151,8 +156,15 @@ contract IPTMarketplace is Ownable {
             phaseCount++;
         }
         require(phasesFundTotal == _price * _amount, "Funds not matched");
-        // Ensure all minted tokens are listed
-        require(inukaPartnerToken.getMintedAmount(_projectId) == _amount, "Not all tokens listed");
+        require(_fundraiseEnds > block.timestamp, "Invalid date");
+        require(_projectStarts > _fundraiseEnds, "Invalid date");
+        phaseCount = 1;
+        while (phaseCount < _phasesNumber) {
+            // Check the dates are valid i.e. one after another
+            // TODO: Switch to custom error
+            require(_phasesDate[phaseCount - 1] < _phasesDate[phaseCount], "Invalid date");
+            phaseCount++;
+        }
         inukaPartnerToken.deactivateMint(_projectId);
         inukaPlasticCredit.setApprovalForAll(address(this), true);
         _setPrimaryListingDetail(
@@ -166,7 +178,8 @@ contract IPTMarketplace is Ownable {
             _phasesDate,
             _phasesFund
         );
-        refundActive[_projectId] = false;
+        // TODO: Add back refundActive
+        // refundActive[_projectId] = false;
     }
 
     // TODO: Consider whether to remove approval
