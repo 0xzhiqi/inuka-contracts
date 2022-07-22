@@ -7,7 +7,7 @@ interface IInukaPlasticCredit {
     // Add approve and transfer functions
 }
 
-contract InukaPlasticCreditMarketplace is Ownable {
+contract IPCMarketplace is Ownable {
 
     /**
     /* Once started, user cannot transfer/sell tokens

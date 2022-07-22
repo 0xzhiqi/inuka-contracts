@@ -20,7 +20,7 @@ interface IInukaPlasticCredit {
     function getProject(uint256 _projectId) external view returns (Project memory _project);
 }
 
-interface IInukaPlasticCreditMarketplace {
+interface IIPCMarketplace{
     function getPercentRedeemed (address _holder) external view returns (uint256 percentRedeemedFound);
 }
 
@@ -48,7 +48,7 @@ contract InukaPartnerToken is ERC1155, Ownable {
     uint256 private _projectTokenId;
 
     IInukaPlasticCredit private inukaPlasticCredit;
-    IInukaPlasticCreditMarketplace private inukaPlasticCreditMarketplace;
+    IIPCMarketplace private iPCMarketplace;
 
     // TODO: Add events here
 
@@ -71,8 +71,8 @@ contract InukaPartnerToken is ERC1155, Ownable {
         inukaPlasticCredit = IInukaPlasticCredit(_inukaPlasticCreditAddress);
     }
 
-    function setInukaPlasticCreditMarketplace (address _InukaPlasticCreditMarketplace) external onlyOwner {
-        inukaPlasticCreditMarketplace = IInukaPlasticCreditMarketplace(_InukaPlasticCreditMarketplace);
+    function setIPCMarketplace(address _IPCMarketplace) external onlyOwner {
+        iPCMarketplace = IIPCMarketplace(_IPCMarketplace);
     }
 
     function createToken (uint256 _amount, uint256 _projectId) external onlyProjectCreator(_projectId) {
