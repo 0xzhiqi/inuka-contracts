@@ -20,8 +20,27 @@ interface IInukaPlasticCredit {
     function getProject(uint256 _projectId) external view returns (Project memory _project);
 }
 
-interface IIPCMarketplace{
+interface IIPCMarketplace {
     function getPercentRedeemed (address _holder) external view returns (uint256 percentRedeemedFound);
+}
+
+interface IIPTLaunchpad {
+    struct PrimaryListingDetail {
+        address lister;
+        uint256 price;
+        uint256 amount;
+        bool active;
+        uint256 fundraiseEnds;
+        uint256 projectStarts;
+        uint256 phasesCount;
+        uint256[] phasesDate;
+        uint256[] phasesFund;
+    }
+    function getPrimaryListingFeed (uint256 _projectId) external returns (PrimaryListingDetail memory detail);
+}
+
+interface IIPTPoll {
+    function getLatestPollDeadline (uint256 _projectId) external view returns (uint256 deadline);
 }
 
 // TODO: Consider removing Ownable
@@ -49,6 +68,8 @@ contract InukaPartnerToken is ERC1155, Ownable {
 
     IInukaPlasticCredit private inukaPlasticCredit;
     IIPCMarketplace private iPCMarketplace;
+    IIPTLaunchpad private iPTLaunchpad;
+    IIPTPoll private iPTPoll;
 
     // TODO: Add events here
 
@@ -71,8 +92,16 @@ contract InukaPartnerToken is ERC1155, Ownable {
         inukaPlasticCredit = IInukaPlasticCredit(_inukaPlasticCreditAddress);
     }
 
-    function setIPCMarketplace(address _IPCMarketplace) external onlyOwner {
-        iPCMarketplace = IIPCMarketplace(_IPCMarketplace);
+    function setIPCMarketplace(address _iPCMarketplace) external onlyOwner {
+        iPCMarketplace = IIPCMarketplace(_iPCMarketplace);
+    }
+
+    function setIPTPoll(address _iPTPoll) external onlyOwner {
+        iPTPoll = IIPTPoll(_iPTPoll);
+    }
+
+    function setIPTLaunchpad(address _iPTLaunchpad) external onlyOwner {
+        iPTLaunchpad = IIPTLaunchpad(_iPTLaunchpad);
     }
 
     function createToken (uint256 _amount, uint256 _projectId) external onlyProjectCreator(_projectId) {
@@ -143,6 +172,8 @@ contract InukaPartnerToken is ERC1155, Ownable {
         uint256 amount,
         bytes memory data
     ) public override {
+        require(iPTLaunchpad.getPrimaryListingFeed(id).fundraiseEnds < block.timestamp, "Fundraising active");
+        require(iPTPoll.getLatestPollDeadline(id) < block.timestamp, "Poll active");
         require(
             from == _msgSender() || isApprovedForAll(from, _msgSender()),
             "ERC1155: caller is not token owner nor approved"
@@ -160,6 +191,7 @@ contract InukaPartnerToken is ERC1155, Ownable {
         uint256[] memory amounts,
         bytes memory data
     ) public override canBatchTransfer {
+        require(false, "No batch transfer");
         require(
             from == _msgSender() || isApprovedForAll(from, _msgSender()),
             "ERC1155: caller is not token owner nor approved"

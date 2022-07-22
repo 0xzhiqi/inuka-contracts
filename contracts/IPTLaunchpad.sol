@@ -350,4 +350,8 @@ contract IPTLaunchpad is Ownable {
         primaryListingFeed[_projectId].active = true;
     }
 
+    function getPrimaryListingFeed (uint256 _projectId) external returns (PrimaryListingDetail memory detail) {
+        detail = primaryListingFeed[_projectId];
+    }
+
 }

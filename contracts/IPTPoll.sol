@@ -22,7 +22,7 @@ contract IPTPoll is Ownable {
     /* @dev Use this to check if token transfer is enabled. TODO: Verify that this is a safe way
     /* to disable transfer while poll is ongoing 
     */
-    mapping (uint256 => uint256) latestPollDeadline;
+    mapping (uint256 => uint256) private latestPollDeadline;
     /**
     /* @notice Check for each project, in each phase, if poll is active based on timestamp 
     /* in the first poll
@@ -139,5 +139,9 @@ contract IPTPoll is Ownable {
 
     function getSecondPollResult (uint256 _projectId, uint256 _phase) external view returns (PollOutcome memory resultFound) {
         resultFound = secondPollResult[_projectId][_phase];
+    }
+
+    function getLatestPollDeadline (uint256 _projectId) external view returns (uint256 deadline) {
+        deadline = latestPollDeadline[_projectId];
     }
 }
