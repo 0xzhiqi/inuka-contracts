@@ -36,7 +36,7 @@ interface IIPTLaunchpad {
         uint256[] phasesDate;
         uint256[] phasesFund;
     }
-    function getPrimaryListingFeed (uint256 _projectId) external returns (PrimaryListingDetail memory detail);
+    function getPrimaryListingFeed (uint256 _projectId) external view returns (PrimaryListingDetail memory detail);
 }
 
 interface IIPTPoll {
