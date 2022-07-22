@@ -21,8 +21,6 @@ interface IInukaPlasticCredit {
         bytes32 polymerType;
         bytes32 plasticForm;
     }
-    function balanceOf(address account, uint256 id) external view returns (uint256);
-    function setApprovalForAll(address operator, bool approved) external;
     function getProject(uint256 _projectId) external view returns (Project memory _project);
 }
 
@@ -30,15 +28,13 @@ interface IInukaPartnerToken {
     function getMintedAmount (uint256 _projectId) external view returns (uint256 mintedAmountFound);
     function deactivateMint (uint256 _projectId) external;
     function undoDeactivateMint (uint256 _projectId) external;
+    function balanceOf(address account, uint256 id) external view returns (uint256);
+    function setApprovalForAll(address operator, bool approved) external;
 }
 
 error IPTLaunchpad__InsufficientBalance(
     uint256 balance,
     uint256 required
-);
-
-error IPTLaunchpad__ (
-
 );
 
 contract IPTLaunchpad is Ownable {
@@ -67,6 +63,7 @@ contract IPTLaunchpad is Ownable {
     /* @notice Tracks for each tokenId the number of tokens sold in primary sale
     */
     mapping (uint256 => uint256) private primarySaleToken;
+    // TODO: Consider removing primarySaleRevenue since it can be derived from primarySaleToken
     /**
     /* @notice Tracks for each tokenId the number of tokens sold in primary sale
     */
@@ -75,6 +72,12 @@ contract IPTLaunchpad is Ownable {
     /* @notice Show where for a tokenId refunding is ongoing
     */
     mapping (uint256 => bool) private refundActive;
+
+    mapping (uint256 => mapping (address => bool)) private refunded;
+
+    mapping (uint256 => bool) private fundingComplete;
+
+    mapping (uint256 => uint256) private currentPhase;
 
     /**
     /* @notice Tracks for each projectId how much each wallet has funded it
@@ -122,9 +125,10 @@ contract IPTLaunchpad is Ownable {
         ) external 
         onlyProjectCreator(_projectId) 
     {
-        require(inukaPlasticCredit.balanceOf(msg.sender, _projectId) >= _amount, "Insufficient balance");
+        require(inukaPartnerToken.balanceOf(msg.sender, _projectId) >= _amount, "Insufficient balance");
         // Ensure all minted tokens are listed
         require(inukaPartnerToken.getMintedAmount(_projectId) == _amount, "Not all tokens listed");
+        require(!refundActive[_projectId], "Refunding");
         require(_price > 0, "No price");
         require(_phasesNumber < 6, "More than 5 phases");
         uint256 phasesFundTotal;
@@ -144,7 +148,7 @@ contract IPTLaunchpad is Ownable {
             phaseCount++;
         }
         inukaPartnerToken.deactivateMint(_projectId);
-        inukaPlasticCredit.setApprovalForAll(address(this), true);
+        inukaPartnerToken.setApprovalForAll(address(this), true);
         _setPrimaryListingDetail(
             _projectId, 
             msg.sender, 
@@ -156,8 +160,6 @@ contract IPTLaunchpad is Ownable {
             _phasesDate,
             _phasesFund
         );
-        // TODO: Add back refundActive
-        // refundActive[_projectId] = false;
     }
 
     // TODO: Consider whether to remove approval
@@ -186,18 +188,64 @@ contract IPTLaunchpad is Ownable {
         mockUsdc.transferFrom(msg.sender, address(this), totalPrice);
     }
 
-    function refund () external {}
+    /**
+    /* @notice To let holders get back usdc paid when a project is delisted. Holders get to keep the tokens
+    /* even after redeeming
+    */
+    function getRefund (uint256 _projectId) external {
+        require(refundActive[_projectId], "Refund Inactive");
+        require(inukaPartnerToken.balanceOf(msg.sender, _projectId) > 0, "Not holder");
+        require(!refunded[_projectId][msg.sender], "Refunded");
+        refunded[_projectId][msg.sender] = true;
+        mockUsdc.transferFrom(
+            address(this), 
+            msg.sender, 
+            primaryListingFeed[_projectId].price * inukaPartnerToken.balanceOf(msg.sender, _projectId)
+        );
+    }
 
+    // TODO: Check if precision of Usdc raised could be an issue: 99.999% vs 100% 
+    /**
+    /* @notice For anyone to call to enable refund if fundraising target not hit by deadline
+    */
+    function requestRefund (uint256 _projectId) external {
+        require(block.timestamp > primaryListingFeed[_projectId].fundraiseEnds, "Fundraise ongoing");
+        require(primaryListingFeed[_projectId].amount - primarySaleToken[_projectId] > 1e4, "Funding Complete" );
+        refundActive[_projectId] = true;
+    }
+
+    // TODO
+    // Withdraws phase 1 funds
+    // Change mapping fundingComplete = true
+    function startProject (uint256 _projectId) external onlyProjectCreator ( _projectId) {
+        require(primaryListingFeed[_projectId].amount - primarySaleToken[_projectId] < 1e4, "Funding Incomplete" );
+        fundingComplete[_projectId] = true;
+        mockUsdc.transferFrom(
+            address(this), 
+            msg.sender, 
+            primaryListingFeed[_projectId].phasesFund[currentPhase[_projectId]]
+        );
+        currentPhase[_projectId]++;
+    }
+
+    // TODO
     // triggers one-week voting. 50% of holders must vote, with 50% saying yes
     // only project creator can request fund release
-    function requestFundRelease (uint256 _projectId) external onlyProjectCreator( _projectId) {}
+    /**
+    /* @notice For project creator to request funds for next phase to be released
+    */
+    function requestFundRelease (uint256 _projectId) external onlyProjectCreator ( _projectId) {
+
+    }
 
     // poll created within requestFundRelease
     // disables token transfer
     function createPoll () internal {}
 
-    // only project creator can release fund 
-    function releaseFund () external {} 
+    // only project creator can release fund after polling clears
+    function releaseFund (uint256 _projectId) public onlyProjectCreator ( _projectId) {
+        require(fundingComplete[_projectId], "Funding Incomplete");
+    } 
 
     function getPollActive (uint256 _projectId) external view returns (bool pollStatus) {
         pollStatus = pollActive[_projectId];
@@ -208,7 +256,7 @@ contract IPTLaunchpad is Ownable {
         pollActive[_projectId] = _status;
     }
 
-    // TODO: Test that it updates if there is a new primary listing for the same tokenId
+    // TODO: Test that it updates i.e. overwrites mapping if there is a new primary listing for the same tokenId
     function _setPrimaryListingDetail (
         uint256 _projectId, 
         address _lister,
