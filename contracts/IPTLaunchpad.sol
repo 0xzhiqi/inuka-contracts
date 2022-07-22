@@ -33,7 +33,17 @@ interface IInukaPartnerToken {
 }
 
 interface IIPTPoll {
+    struct PollOutcome {
+        uint256 totalVotes;
+        uint256 noVotes;
+        uint256 yesVotes;
+    }
     function createFirstPoll (uint256 _projectId, uint256 _phase) external;
+    function getFirstPollResult (uint256 _projectId, uint256 _phase) external view returns (PollOutcome memory resultFound);
+    function getFirstPollActive (uint256 _projectId, uint256 _phase) external view returns (bool pollStatus);
+    function createSecondPoll (uint256 _projectId, uint256 _phase) external;
+    function getSecondPollResult (uint256 _projectId, uint256 _phase) external view returns (PollOutcome memory resultFound);
+    function getSecondPollActive (uint256 _projectId, uint256 _phase) external view returns (bool pollStatus);
 }
 
 error IPTLaunchpad__InsufficientBalance(
@@ -82,6 +92,11 @@ contract IPTLaunchpad is Ownable {
     mapping (uint256 => bool) private fundingComplete;
 
     mapping (uint256 => uint256) private currentPhase;
+
+    /**
+    /* @notice Tracks for each projectId at each phase if the fund has been released to project creator
+    */
+    mapping (uint256 => mapping(uint256 => bool)) fundReleased;
 
     /**
     /* @notice Tracks for each projectId how much each wallet has funded it
@@ -227,7 +242,9 @@ contract IPTLaunchpad is Ownable {
     // Change mapping fundingComplete = true
     function startProject (uint256 _projectId) external onlyProjectCreator ( _projectId) {
         require(primaryListingFeed[_projectId].amount - primarySaleToken[_projectId] < 1e4, "Funding Incomplete" );
+        require(!fundReleased[_projectId][currentPhase[_projectId]], "Fund released"); //TODO Verify that this works without initial update
         fundingComplete[_projectId] = true;
+        fundReleased[_projectId][currentPhase[_projectId]] = true;
         mockUsdc.transferFrom(
             address(this), 
             msg.sender, 
@@ -249,7 +266,13 @@ contract IPTLaunchpad is Ownable {
     // TODO: Add check that first request is over and failed
     function fundReleaseSecondRequest (uint256 _projectId) external onlyProjectCreator ( _projectId) {
         require(fundingComplete[_projectId], "Funding Incomplete");
-        
+        require(!iPTPoll.getFirstPollActive(_projectId, currentPhase[_projectId]), "First poll active");
+        require(
+            primarySaleToken[_projectId] - iPTPoll.getFirstPollResult(_projectId, currentPhase[_projectId]).totalVotes * 2 >= 0 ||
+            iPTPoll.getFirstPollResult(_projectId, currentPhase[_projectId]).noVotes - iPTPoll.getFirstPollResult(_projectId, currentPhase[_projectId]).yesVotes >= 0, 
+            "First vote passed"
+        );
+        iPTPoll.createSecondPoll(_projectId, currentPhase[_projectId]);
     }
 
     // TODO: Use if else statements? One for first poll and other for second poll
@@ -258,8 +281,46 @@ contract IPTLaunchpad is Ownable {
     /**
     /* @notice For Project Creator to request release of next phase's funds after polling clears
     */
-    function releaseFund (uint256 _projectId, uint256 _phase) public onlyProjectCreator ( _projectId) {
+    function releaseFundFirstPoll (uint256 _projectId, uint256 _phase) public onlyProjectCreator ( _projectId) {
         require(fundingComplete[_projectId], "Funding Incomplete");
+        require(!iPTPoll.getFirstPollActive(_projectId, _phase), "First poll active");
+        require(!fundReleased[_projectId][currentPhase[_projectId]], "Fund released");
+        require(
+            primarySaleToken[_projectId] - iPTPoll.getFirstPollResult(_projectId, _phase).totalVotes * 2 < 0, 
+            "Insufficient votes"
+        );
+        require(
+            iPTPoll.getFirstPollResult(_projectId, _phase).noVotes - iPTPoll.getFirstPollResult(_projectId, _phase).yesVotes < 0,
+            "Voted No"
+        );
+        fundReleased[_projectId][currentPhase[_projectId]] = true;
+        mockUsdc.transferFrom(
+            address(this), 
+            msg.sender, 
+            primaryListingFeed[_projectId].phasesFund[currentPhase[_projectId]]
+        );
+        currentPhase[_projectId]++;
+    } 
+
+    function releaseFundSecondPoll (uint256 _projectId, uint256 _phase) public onlyProjectCreator ( _projectId) {
+        require(fundingComplete[_projectId], "Funding Incomplete");
+        require(!iPTPoll.getSecondPollActive(_projectId, _phase), "Second poll active");
+        require(!fundReleased[_projectId][currentPhase[_projectId]], "Fund released");
+        require(
+            primarySaleToken[_projectId] - iPTPoll.getSecondPollResult(_projectId, _phase).totalVotes * 2 < 0, 
+            "Insufficient votes"
+        );
+        require(
+            iPTPoll.getSecondPollResult(_projectId, _phase).noVotes - iPTPoll.getSecondPollResult(_projectId, _phase).yesVotes < 0,
+            "Voted No"
+        );
+        fundReleased[_projectId][currentPhase[_projectId]] = true;
+        mockUsdc.transferFrom(
+            address(this), 
+            msg.sender, 
+            primaryListingFeed[_projectId].phasesFund[currentPhase[_projectId]]
+        );
+        currentPhase[_projectId]++;
     } 
 
     // TODO: Test that it updates i.e. overwrites mapping if there is a new primary listing for the same tokenId

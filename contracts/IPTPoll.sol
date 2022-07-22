@@ -37,6 +37,7 @@ contract IPTPoll is Ownable {
     /* @notice Tracks for each project, in each phase, the total number of votes cast by all addresses 
     /* and the number of no and yes votes in the first poll
     */
+    mapping (uint256 => mapping (uint256 => uint256)) private secondPollActive;
     mapping (uint256 => mapping (uint256 => PollOutcome)) private firstPollResult;
     /**
     /* @notice Tracks for each project, in each phase, the number of votes cast by each address 
@@ -75,6 +76,12 @@ contract IPTPoll is Ownable {
         firstPollActive[_projectId][_phase] = block.timestamp + VOTINGPERIOD;
     }
 
+    function createSecondPoll (uint256 _projectId, uint256 _phase) external {
+        require(iPTLaunchpadAddress == msg.sender, "Unauthorised");
+        latestPollDeadline[_projectId] = block.timestamp + VOTINGPERIOD;
+        secondPollActive[_projectId][_phase] = block.timestamp + VOTINGPERIOD;
+    }
+
     // TODO: Set voting active to be precise --> poll #, phase #
     /**
     /* @notice One vote per token. Voter need not cast all votes at one go.
@@ -96,12 +103,41 @@ contract IPTPoll is Ownable {
         }
     }
 
+    function voteSecondPoll (
+        uint256 _projectId, 
+        uint256 _phase, 
+        uint256 _voteCount, 
+        bool _voteChoice
+    ) external {
+        require(secondPollActive[_projectId][_phase] < block.timestamp, "Poll over");
+        require(inukaPartnerToken.balanceOf(msg.sender, _projectId) >= secondPollCast[_projectId][_phase][msg.sender], "No votes left");
+        secondPollCast[_projectId][_phase][msg.sender] += _voteCount;
+        secondPollResult[_projectId][_phase].totalVotes += _voteCount;
+        if (_voteChoice) {
+            secondPollResult[_projectId][_phase].yesVotes += _voteCount;
+        } else {
+            secondPollResult[_projectId][_phase].noVotes += _voteCount;
+        }
+    } 
+
     function getFirstPollActive (uint256 _projectId, uint256 _phase) external view returns (bool pollStatus) {
         pollStatus = firstPollActive[_projectId][_phase] < block.timestamp;
+    }
+
+    function getSecondPollActive (uint256 _projectId, uint256 _phase) external view returns (bool pollStatus) {
+        pollStatus = secondPollActive[_projectId][_phase] < block.timestamp;
     }
 
     // TODO: Remove if not used
     function setFirstPollActive (uint256 _projectId, uint256 _phase) internal {
         firstPollActive[_projectId][_phase] = block.timestamp + VOTINGPERIOD;
+    }
+
+    function getFirstPollResult (uint256 _projectId, uint256 _phase) external view returns (PollOutcome memory resultFound) {
+        resultFound = firstPollResult[_projectId][_phase];
+    }
+
+    function getSecondPollResult (uint256 _projectId, uint256 _phase) external view returns (PollOutcome memory resultFound) {
+        resultFound = secondPollResult[_projectId][_phase];
     }
 }
