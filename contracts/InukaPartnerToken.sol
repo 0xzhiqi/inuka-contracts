@@ -36,8 +36,12 @@ contract InukaPartnerToken is ERC1155, Ownable {
 
     enum AuditStatus { None, Partial, Complete}
     mapping (uint256 => Audit[]) private _auditTrail;
+    mapping (uint256 => uint256) private _mintedAmount;
+    mapping (uint256 => bool) private _mintDeactivated;
 
     bool batchTransferActive;
+
+    address private IPTMarketplaceAddress;
 
     string public name;
     string public symbol;
@@ -164,4 +168,18 @@ contract InukaPartnerToken is ERC1155, Ownable {
     }
 
     // TODO: Consider if anything needs to be done to: and approve functions and/or before transfer function
+
+    function getMintedAmount (uint256 _projectId) external view returns (uint256 mintedAmountFound) {
+        mintedAmountFound = _mintedAmount[_projectId];
+    }
+
+    function setIPTMarketplaceAddress (address _address) external onlyOwner {
+        IPTMarketplaceAddress = _address;
+    }
+
+    // TODO: test that require statement works
+    function deactivateMint (uint256 _projectId) external {
+        require(msg.sender == IPTMarketplaceAddress, "Unauthorised");
+        _mintDeactivated[_projectId] = true;
+    }
 }
