@@ -32,6 +32,10 @@ interface IInukaPartnerToken {
     function setApprovalForAll(address operator, bool approved) external;
 }
 
+interface IIPTPoll {
+    function createFirstPoll (uint256 _projectId, uint256 _phase) external;
+}
+
 error IPTLaunchpad__InsufficientBalance(
     uint256 balance,
     uint256 required
@@ -41,6 +45,7 @@ contract IPTLaunchpad is Ownable {
     IMockUsdc public mockUsdc;
     IInukaPlasticCredit private inukaPlasticCredit;
     IInukaPartnerToken private inukaPartnerToken;
+    IIPTPoll private iPTPoll;
 
     struct PrimaryListingDetail {
         address lister;
@@ -53,7 +58,7 @@ contract IPTLaunchpad is Ownable {
         uint256[] phasesDate;
         uint256[] phasesFund;
     }
-    
+
     /**
     /* @notice Shows for each token the primary listing details
     */
@@ -104,6 +109,10 @@ contract IPTLaunchpad is Ownable {
 
     function setInukaPartnerToken (address _inukaPartnerTokenAddress) external onlyOwner {
         inukaPartnerToken = IInukaPartnerToken(_inukaPartnerTokenAddress);
+    }
+
+    function setIPTPoll (address _iPTPollAddress) external onlyOwner {
+        iPTPoll = IIPTPoll(_iPTPollAddress);
     }
 
     /**
@@ -227,18 +236,29 @@ contract IPTLaunchpad is Ownable {
         currentPhase[_projectId]++;
     }
 
-    // TODO
-    // triggers one-week voting. 50% of holders must vote, with 50% saying yes
-    // only project creator can request fund release
+    // TODO: Check that there is still a phase with unreleased funds
+    // TODO: disable token transfer by checking if block.timestamp > latestPollDeadline
     /**
     /* @notice For project creator to request funds for next phase to be released
     */
-    function requestFundRelease (uint256 _projectId) external onlyProjectCreator ( _projectId) {
+    function fundReleaseFirstRequest (uint256 _projectId) external onlyProjectCreator ( _projectId) {
         require(fundingComplete[_projectId], "Funding Incomplete");
+        iPTPoll.createFirstPoll(_projectId, currentPhase[_projectId]);
     }
 
-    // only project creator can release fund after polling clears
-    function releaseFund (uint256 _projectId) public onlyProjectCreator ( _projectId) {
+    // TODO: Add check that first request is over and failed
+    function fundReleaseSecondRequest (uint256 _projectId) external onlyProjectCreator ( _projectId) {
+        require(fundingComplete[_projectId], "Funding Incomplete");
+        
+    }
+
+    // TODO: Use if else statements? One for first poll and other for second poll
+    // TODO: First check if first poll is past deadline and votes pass
+    // TODO: Else check first poll is past deadline and votes pass
+    /**
+    /* @notice For Project Creator to request release of next phase's funds after polling clears
+    */
+    function releaseFund (uint256 _projectId, uint256 _phase) public onlyProjectCreator ( _projectId) {
         require(fundingComplete[_projectId], "Funding Incomplete");
     } 
 
