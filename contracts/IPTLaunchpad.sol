@@ -53,8 +53,7 @@ contract IPTLaunchpad is Ownable {
         uint256[] phasesDate;
         uint256[] phasesFund;
     }
-
-    mapping (uint256 => bool) pollActive;
+    
     /**
     /* @notice Shows for each token the primary listing details
     */
@@ -235,26 +234,13 @@ contract IPTLaunchpad is Ownable {
     /* @notice For project creator to request funds for next phase to be released
     */
     function requestFundRelease (uint256 _projectId) external onlyProjectCreator ( _projectId) {
-
+        require(fundingComplete[_projectId], "Funding Incomplete");
     }
-
-    // poll created within requestFundRelease
-    // disables token transfer
-    function createPoll () internal {}
 
     // only project creator can release fund after polling clears
     function releaseFund (uint256 _projectId) public onlyProjectCreator ( _projectId) {
         require(fundingComplete[_projectId], "Funding Incomplete");
     } 
-
-    function getPollActive (uint256 _projectId) external view returns (bool pollStatus) {
-        pollStatus = pollActive[_projectId];
-    }
-
-    // Can only be set through function controlled only by project creator
-    function setPollActive (uint256 _projectId, bool _status) internal {
-        pollActive[_projectId] = _status;
-    }
 
     // TODO: Test that it updates i.e. overwrites mapping if there is a new primary listing for the same tokenId
     function _setPrimaryListingDetail (
